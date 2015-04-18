@@ -23,9 +23,10 @@
 * SOFTWARE.
 */
 
+#include "driver/spi_register.h"
 #include "SPI.h"
 
-SPIClass SPI;
+//SPIesp SPI;
 
 
 
@@ -40,26 +41,24 @@ SPIClass SPI;
 //				 
 ////////////////////////////////////////////////////////////////////////////////
 
-void SPIClass::begin(uint8 spi_no)
+SPIesp::SPIesp(uint8 spi_no)
 {
 	
-	SPI_type = spi_no;
-	if(SPI_type > 1) return; //Only SPI and HSPI are valid spi modules. 
+	_spi_no = spi_no;
+	if(_spi_no > 1) return; //Only SPI and HSPI are valid spi modules. 
 
 	spi_init_gpio(SPI_CLK_USE_DIV);
 	spi_clock(SPI_CLK_PREDIV, SPI_CLK_CNTDIV);
 	spi_tx_byte_order(MSBFIRST);
 
-	SET_PERI_REG_MASK(SPI_USER(SPI_type), SPI_CS_SETUP|SPI_CS_HOLD);
-	CLEAR_PERI_REG_MASK(SPI_USER(SPI_type), SPI_FLASH_MODE);
+	SET_PERI_REG_MASK(SPI_USER(_spi_no), SPI_CS_SETUP|SPI_CS_HOLD);
+	CLEAR_PERI_REG_MASK(SPI_USER(_spi_no), SPI_FLASH_MODE);
 
 }
 
-void SPIClass::end()
+SPIesp::~SPIesp()
 {
-  if (!SPI)
-    return;
-  delete SPI;
+	
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -75,23 +74,23 @@ void SPIClass::end()
 //				 
 ////////////////////////////////////////////////////////////////////////////////
 
-void SPIClass::spi_init_gpio(uint8 sysclk_as_spiclk)
+void SPIesp::spi_init_gpio(uint8 sysclk_as_spiclk)
 {
 
-//	if(SPI_type > 1) return; //Not required. Valid SPI_type is checked with if/elif below.
+//	if(_spi_no > 1) return; //Not required. Valid _spi_no is checked with if/elif below.
 
 	uint32 clock_div_flag = 0;
 	if(sysclk_as_spiclk){
 		clock_div_flag = 0x0001;	
 	} 
 
-	if(SPI_type==SSPI){
+	if(_spi_no==SSPI){
 		WRITE_PERI_REG(PERIPHS_IO_MUX, 0x005|(clock_div_flag << 8)); //Set bit 8 if 80MHz sysclock required
 		PIN_FUNC_SELECT(PERIPHS_IO_MUX_SD_CLK_U,   1);
 		PIN_FUNC_SELECT(PERIPHS_IO_MUX_SD_CMD_U,   1);
 		PIN_FUNC_SELECT(PERIPHS_IO_MUX_SD_DATA0_U, 1);	
 		PIN_FUNC_SELECT(PERIPHS_IO_MUX_SD_DATA1_U, 1);	
-	}else if(SPI_type==HSPI){
+	}else if(_spi_no==HSPI){
 		WRITE_PERI_REG(PERIPHS_IO_MUX, 0x105|(clock_div_flag<<9)); //Set bit 9 if 80MHz sysclock required
 		PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTDI_U, 2); //GPIO12 is HSPI MISO pin (Master Data In)
 		PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTCK_U, 2); //GPIO13 is HSPI MOSI pin (Master Data Out)
@@ -113,18 +112,18 @@ void SPIClass::spi_init_gpio(uint8 sysclk_as_spiclk)
 //				 
 ////////////////////////////////////////////////////////////////////////////////
 
-void SPIClass::spi_clock(uint16 prediv, uint8 cntdiv)
+void SPIesp::spi_clock(uint16 prediv, uint8 cntdiv)
 {
 	
-	if(SPI_type > 1) return;
+	if(_spi_no > 1) return;
 
 	if((prediv==0)|(cntdiv==0)){
 
-		WRITE_PERI_REG(SPI_CLOCK(SPI_type), SPI_CLK_EQU_SYSCLK);
+		WRITE_PERI_REG(SPI_CLOCK(_spi_no), SPI_CLK_EQU_SYSCLK);
 
 	} else {
 	
-		WRITE_PERI_REG(SPI_CLOCK(SPI_type), 
+		WRITE_PERI_REG(SPI_CLOCK(_spi_no), 
 					(((prediv-1)&SPI_CLKDIV_PRE) << SPI_CLKDIV_PRE_S)|
 					(((cntdiv-1)&SPI_CLKCNT_N)   << SPI_CLKCNT_N_S)  |
 					(((cntdiv>>1)&SPI_CLKCNT_H)  << SPI_CLKCNT_H_S)  |
@@ -152,15 +151,15 @@ void SPIClass::spi_clock(uint16 prediv, uint8 cntdiv)
 //				 
 ////////////////////////////////////////////////////////////////////////////////
 
-void SPIClass::spi_tx_byte_order(uint8 byte_order)
+void SPIesp::spi_tx_byte_order(uint8 byte_order)
 {
 
-	if(SPI_type > 1) return;
+	if(_spi_no > 1) return;
 
 	if(byte_order){
-		SET_PERI_REG_MASK(SPI_USER(SPI_type), SPI_WR_BYTE_ORDER);
+		SET_PERI_REG_MASK(SPI_USER(_spi_no), SPI_WR_BYTE_ORDER);
 	} else {
-		CLEAR_PERI_REG_MASK(SPI_USER(SPI_type), SPI_WR_BYTE_ORDER);
+		CLEAR_PERI_REG_MASK(SPI_USER(_spi_no), SPI_WR_BYTE_ORDER);
 	}
 }
 
@@ -175,81 +174,35 @@ void SPIClass::spi_tx_byte_order(uint8 byte_order)
 //				 
 ////////////////////////////////////////////////////////////////////////////////
 
-void SPIClass::spi_txd(uint8 no_bits, uint32 data)
+void SPIesp::spi_txd(uint8 no_bits, uint32 data)
 {
 
-	if(SPI_type > 1) return;
+	if(_spi_no > 1) return;
 
 	uint8 extra_bits = no_bits%8;
 
-	while(READ_PERI_REG(SPI_CMD(SPI_type))&SPI_USR);	
+	while(READ_PERI_REG(SPI_CMD(_spi_no))&SPI_USR);	
 	//enable MOSI
-	SET_PERI_REG_MASK(SPI_USER(SPI_type), SPI_USR_MOSI);
+	SET_PERI_REG_MASK(SPI_USER(_spi_no), SPI_USR_MOSI);
 	//disable MISO, ADDR, COMMAND, DUMMY
-	CLEAR_PERI_REG_MASK(SPI_USER(SPI_type), SPI_USR_MISO|SPI_USR_COMMAND|SPI_USR_ADDR|SPI_USR_DUMMY);
+	CLEAR_PERI_REG_MASK(SPI_USER(_spi_no), SPI_USR_MISO|SPI_USR_COMMAND|SPI_USR_ADDR|SPI_USR_DUMMY);
 	//setup MOSI bit length
-	WRITE_PERI_REG(SPI_USER1(SPI_type), ((no_bits-1)&SPI_USR_MOSI_BITLEN)<<SPI_USR_MOSI_BITLEN_S); //set bits in MOSI BITLEN. Clears all ADDR/MISO/DUMMY BITLENs!
+	WRITE_PERI_REG(SPI_USER1(_spi_no), ((no_bits-1)&SPI_USR_MOSI_BITLEN)<<SPI_USR_MOSI_BITLEN_S); //set bits in MOSI BITLEN. Clears all ADDR/MISO/DUMMY BITLENs!
 	//copy data to W0
-	if(READ_PERI_REG(SPI_USER(SPI_type))&SPI_WR_BYTE_ORDER) {
-		WRITE_PERI_REG(SPI_W0(SPI_type), data<<(32-no_bits));
+	if(READ_PERI_REG(SPI_USER(_spi_no))&SPI_WR_BYTE_ORDER) {
+		WRITE_PERI_REG(SPI_W0(_spi_no), data<<(32-no_bits));
 	} else if(extra_bits){
 		//if your data isn't a byte multiple (8/16/24/32 bits)and you don't have SPI_WR_BYTE_ORDER set, you need this to move the non-8bit remainder to the MSBs
 		//not sure if there's even a use case for this, but it's here if you need it...
 		//for example, 0xDA4 12 bits without SPI_WR_BYTE_ORDER would usually be output as if it were 0x0DA4, 
 		//of which 0xA4, and then 0x0 would be shifted out (first 8 bits of low byte, then 4 MSB bits of high byte - ie reverse byte order). 
 		//The code below shifts it out as 0xA4 followed by 0xD as you might require. 
-		WRITE_PERI_REG(SPI_W0(SPI_type), ((0xFFFFFFFF<<(no_bits - extra_bits)&data)<<(8-extra_bits) | (0xFFFFFFFF>>(32-(no_bits - extra_bits)))&data));
+		WRITE_PERI_REG(SPI_W0(_spi_no), ((0xFFFFFFFF<<(no_bits - extra_bits)&data)<<(8-extra_bits) | (0xFFFFFFFF>>(32-(no_bits - extra_bits)))&data));
 	} else {
-		WRITE_PERI_REG(SPI_W0(SPI_type), data);
+		WRITE_PERI_REG(SPI_W0(_spi_no), data);
 	}
 	//send
-	SET_PERI_REG_MASK(SPI_CMD(SPI_type), SPI_USR);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-//
-// Function Name: spi_tx8
-//   Description: SPI transmit 8bits of data
-//    Parameters: data - actual data to transmit
-//				 
-////////////////////////////////////////////////////////////////////////////////
-
-void SPIClass::spi_tx8(uint32 data)
-{
-	spi_txd(8, (uint32) data);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-//
-// Function Name: spi_tx16
-//   Description: SPI transmit 16bits of data
-//    Parameters: spi_no - SSPI (0) or HSPI (1)
-//				  data - actual data to transmit
-//				 
-////////////////////////////////////////////////////////////////////////////////
-
-void SPIClass::spi_tx16(uint32 data)
-{
-	spi_txd(16, (uint32) data);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-//
-// Function Name: spi_tx32
-//   Description: SPI transmit 32bits of data
-//    Parameters: data - actual data to transmit
-//				 
-////////////////////////////////////////////////////////////////////////////////
-
-void SPIClass::spi_tx32(uint32 data)
-{
-	spi_txd(32, data);
+	SET_PERI_REG_MASK(SPI_CMD(_spi_no), SPI_USR);
 }
 
 //TODO spi_rxd function

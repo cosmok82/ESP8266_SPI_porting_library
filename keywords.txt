@@ -6,7 +6,8 @@
 # Datatypes (KEYWORD1)
 #######################################
 
-SPI	KEYWORD1
+SPIesp  	KEYWORD1
+SPI     	KEYWORD1
 
 #######################################
 # Methods and Functions (KEYWORD2)

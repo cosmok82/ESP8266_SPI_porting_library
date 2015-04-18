@@ -26,14 +26,12 @@
 #ifndef _SPI_H_INCLUDED
 #define _SPI_H_INCLUDED
 
-#include "Arduino.h"
-/*extern "C" {}*/
-#include "driver/spi_register.h"
+#include <Arduino.h>
 #include "ets_sys.h"
 #include "osapi.h"
 #include "os_type.h"
 #include "eagle_soc.h"
-/*#include "gpio.h"*/
+
 
 //Define SPI hardware modules
 #define SSPI 0
@@ -54,45 +52,68 @@
 #endif
 
 //Define some default SPI clock settings
-#define SPI_CLK_PREDIV 2 //10
-#define SPI_CLK_CNTDIV 2 //2
-// AVR compatibility definitions
-/*#define SPI_CLOCK_DIV4   0x04
-#define SPI_CLOCK_DIV16  0x10
-#define SPI_CLOCK_DIV64  0x40
-#define SPI_CLOCK_DIV128 0x80
-#define SPI_CLOCK_DIV2   0x02
-#define SPI_CLOCK_DIV8   0x08
-#define SPI_CLOCK_DIV32  0x20*/
+#define SPI_CLK_PREDIV 2
+#define SPI_CLK_CNTDIV 2
 
-
-//#define SPI_CLK_FREQ CPU_CLK_FREQ/(SPI_CLK_PREDIV*SPI_CLK_CNTDIV) // 80 / 20 = 4 MHz
 #define SPI_CLK_FREQ CPU_CLK_FREQ/(SPI_CLK_PREDIV*SPI_CLK_CNTDIV) // 80 / 4 = 20 MHz
 
 
-class SPIClass {
+class SPIesp {
 public:
   
   // Initialize the SPI library
-  static void begin(uint8 spi_no);
-  
+  SPIesp(uint8 spi_no = HSPI);
   // Disable the SPI bus
-  static void end();
+  ~SPIesp();
+  
+  void spi_txd(uint8 no_bits, uint32 data);
 
-  static void spi_txd(uint8 no_bits, uint32 data);
-  //#define spi_txd(no_bits, data) transfer(no_bits, (uint32) data)
-  static void  spi_tx8(uint32 data);
-  static void spi_tx16(uint32 data);
-  static void spi_tx32(uint32 data);
+  ////////////////////////////////////////////////////////////////////////////////
 
+  ////////////////////////////////////////////////////////////////////////////////
+  //
+  // Function Name: spi_tx8
+  //   Description: SPI transmit 8bits of data
+  //    Parameters: data - actual data to transmit
+  //				 
+  ////////////////////////////////////////////////////////////////////////////////
+
+  inline void spi_tx8(uint32 data) { spi_txd(8, (uint32) data); }
+
+  ////////////////////////////////////////////////////////////////////////////////
+
+  ////////////////////////////////////////////////////////////////////////////////
+  //
+  // Function Name: spi_tx16
+  //   Description: SPI transmit 16bits of data
+  //    Parameters: spi_no - SSPI (0) or HSPI (1)
+  //				  data - actual data to transmit
+  //				 
+  ////////////////////////////////////////////////////////////////////////////////
+
+  inline void spi_tx16(uint32 data) { spi_txd(16, (uint32) data); }
+
+  ////////////////////////////////////////////////////////////////////////////////
+
+  ////////////////////////////////////////////////////////////////////////////////
+  //
+  // Function Name: spi_tx32
+  //   Description: SPI transmit 32bits of data
+  //    Parameters: data - actual data to transmit
+  //				 
+  ////////////////////////////////////////////////////////////////////////////////
+
+  inline void spi_tx32(uint32 data) { spi_txd(32, data); }
+
+  
 private:
 
-  static uint8 SPI_type;
-  static void spi_init_gpio(uint8 sysclk_as_spiclk);
-  static void spi_clock(uint16 prediv, uint8 cntdiv);
-  static void spi_tx_byte_order(uint8 byte_order);
+  uint8 _spi_no;
+  void spi_init_gpio(uint8 sysclk_as_spiclk);
+  void spi_clock(uint16 prediv, uint8 cntdiv);
+  void spi_tx_byte_order(uint8 byte_order);
 };
 
-extern SPIClass SPI;
+//extern SPIesp SPI;
 
 #endif // _SPI_H_INCLUDED
