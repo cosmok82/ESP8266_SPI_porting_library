@@ -9,7 +9,7 @@ Topic on <a href="http://goo.gl/3RzfRp">esp8266.com</a> .
 </br>
 </br>
 
-    0.0.1 (2015-04-17)
+    0.0.1 (2015-04-18)
     ------------------
     New:
     -   Inline transmission functions released
