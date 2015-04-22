@@ -1,224 +1,75 @@
 /*
-* The MIT License (MIT)
-* 
-* Copyright (c) 2015 David Ogilvy (MetalPhreak)
-* Porting by Cosimo Orlando (http://creativityslashdesign.tk)
-* 
-* Permission is hereby granted, free of charge, to any person obtaining a copy
-* of this software and associated documentation files (the "Software"), to deal
-* in the Software without restriction, including without limitation the rights
-* to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-* copies of the Software, and to permit persons to whom the Software is
-* furnished to do so, subject to the following conditions:
-* 
-* The above copyright notice and this permission notice shall be included in all
-* copies or substantial portions of the Software.
-* 
-* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-* OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-* SOFTWARE.
-*/
+ * Copyright (c) 2010 by Cristian Maglie <c.maglie@bug.st>
+ * Copyright (c) 2014 by Paul Stoffregen <paul@pjrc.com> (Transaction API)
+ * Copyright (c) 2014 by Matthijs Kooijman <matthijs@stdin.nl> (SPISettings AVR)
+ * SPI Master library for arduino.
+ *
+ * This file is free software; you can redistribute it and/or modify
+ * it under the terms of either the GNU General Public License version 2
+ * or the GNU Lesser General Public License version 2.1, both as
+ * published by the Free Software Foundation.
+ */
 
-#include "driver/spi_register.h"
 #include "SPI.h"
+#include "HSPI.h"
 
-//SPIesp SPI;
-
-
-
+SPIClass SPI;
 
 
-
-////////////////////////////////////////////////////////////////////////////////
-//
-// Function Name: begin
-//   Description: Wrapper to setup HSPI/SSPI GPIO pins and default SPI clock
-//    Parameters: spi_no - SSPI (0) or HSPI (1)
-//				 
-////////////////////////////////////////////////////////////////////////////////
-
-SPIesp::SPIesp(uint8 spi_no)
+SPIClass::SPIClass()
+: _impl(0)
 {
-	
-	_spi_no = spi_no;
-	if(_spi_no > 1) return; //Only SPI and HSPI are valid spi modules. 
-
-	spi_init_gpio(SPI_CLK_USE_DIV);
-	spi_clock(SPI_CLK_PREDIV, SPI_CLK_CNTDIV);
-	spi_tx_byte_order(MSBFIRST);
-
-	SET_PERI_REG_MASK(SPI_USER(_spi_no), SPI_CS_SETUP|SPI_CS_HOLD);
-	CLEAR_PERI_REG_MASK(SPI_USER(_spi_no), SPI_FLASH_MODE);
-
 }
 
-SPIesp::~SPIesp()
+void SPIClass::begin()
 {
-	
+  if (_impl)
+    end();
+  _impl = new HSPI;
+  _impl->begin();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-//
-// Function Name: spi_init_gpio
-//   Description: Initialises the GPIO pins for use as SPI pins.
-//    Parameters: sysclk_as_spiclk - SPI_CLK_80MHZ_NODIV (1) if using 80MHz
-//									 sysclock for SPI clock. 
-//									 SPI_CLK_USE_DIV (0) if using divider to
-//									 get lower SPI clock speed.
-//				 
-////////////////////////////////////////////////////////////////////////////////
-
-void SPIesp::spi_init_gpio(uint8 sysclk_as_spiclk)
+void SPIClass::end() 
 {
-
-//	if(_spi_no > 1) return; //Not required. Valid _spi_no is checked with if/elif below.
-
-	uint32 clock_div_flag = 0;
-	if(sysclk_as_spiclk){
-		clock_div_flag = 0x0001;	
-	} 
-
-	if(_spi_no==SSPI){
-		WRITE_PERI_REG(PERIPHS_IO_MUX, 0x005|(clock_div_flag << 8)); //Set bit 8 if 80MHz sysclock required
-		PIN_FUNC_SELECT(PERIPHS_IO_MUX_SD_CLK_U,   1);
-		PIN_FUNC_SELECT(PERIPHS_IO_MUX_SD_CMD_U,   1);
-		PIN_FUNC_SELECT(PERIPHS_IO_MUX_SD_DATA0_U, 1);	
-		PIN_FUNC_SELECT(PERIPHS_IO_MUX_SD_DATA1_U, 1);	
-	}else if(_spi_no==HSPI){
-		WRITE_PERI_REG(PERIPHS_IO_MUX, 0x105|(clock_div_flag<<9)); //Set bit 9 if 80MHz sysclock required
-		PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTDI_U, 2); //GPIO12 is HSPI MISO pin (Master Data In)
-		PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTCK_U, 2); //GPIO13 is HSPI MOSI pin (Master Data Out)
-		PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTMS_U, 2); //GPIO14 is HSPI CLK pin (Clock)
-		PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTDO_U, 2); //GPIO15 is HSPI CS pin (Chip Select / Slave Select)
-	}
-
+  if (!_impl)
+    return;
+  _impl->end();
+  delete _impl;
+  _impl = 0;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-//
-// Function Name: spi_clock
-//   Description: sets up the control registers for the SPI clock
-//    Parameters: prediv - predivider value (actual division value)
-//				  cntdiv - postdivider value (actual division value)
-//				  Set either divider to 0 to disable all division (80MHz sysclock)
-//				 
-////////////////////////////////////////////////////////////////////////////////
-
-void SPIesp::spi_clock(uint16 prediv, uint8 cntdiv)
+uint8_t SPIClass::transfer(uint8_t data) 
 {
-	
-	if(_spi_no > 1) return;
-
-	if((prediv==0)|(cntdiv==0)){
-
-		WRITE_PERI_REG(SPI_CLOCK(_spi_no), SPI_CLK_EQU_SYSCLK);
-
-	} else {
-	
-		WRITE_PERI_REG(SPI_CLOCK(_spi_no), 
-					(((prediv-1)&SPI_CLKDIV_PRE) << SPI_CLKDIV_PRE_S)|
-					(((cntdiv-1)&SPI_CLKCNT_N)   << SPI_CLKCNT_N_S)  |
-					(((cntdiv>>1)&SPI_CLKCNT_H)  << SPI_CLKCNT_H_S)  |
-					((0&SPI_CLKCNT_L)<<SPI_CLKCNT_L_S));
-	}
-
+  if (!_impl)
+    return;
+  return _impl->transfer(data);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-//
-// Function Name: spi_tx_byte_order
-//   Description: Setup the byte order for shifting data out of buffer
-//    Parameters: byte_order - MSBFIRST (1) 
-//							   Data is sent out starting with Bit31 and down to Bit0
-//
-//							   LSBFIRST (0)
-//							   Data is sent out starting with the lowest BYTE, from 
-//							   MSB to LSB, followed by the second lowest BYTE, from
-//							   MSB to LSB, followed by the second highest BYTE, from
-//							   MSB to LSB, followed by the highest BYTE, from MSB to LSB
-//							   0xABCDEFGH would be sent as 0xGHEFCDAB
-//
-//				 
-////////////////////////////////////////////////////////////////////////////////
-
-void SPIesp::spi_tx_byte_order(uint8 byte_order)
+void SPIClass::transfer(void *buf, size_t count) 
 {
-
-	if(_spi_no > 1) return;
-
-	if(byte_order){
-		SET_PERI_REG_MASK(SPI_USER(_spi_no), SPI_WR_BYTE_ORDER);
-	} else {
-		CLEAR_PERI_REG_MASK(SPI_USER(_spi_no), SPI_WR_BYTE_ORDER);
-	}
+  if (!_impl)
+    return;
+  _impl->transfer(buf, count);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-//
-// Function Name: spi_txd
-//   Description: SPI transmit data up to 32bits of data
-//    Parameters: no_bits - actual number of bits to transmit
-//				  data - actual data to transmit (assumes data is in lower bits)
-//				 
-////////////////////////////////////////////////////////////////////////////////
-
-void SPIesp::spi_txd(uint8 no_bits, uint32 data)
+void SPIClass::setBitOrder(uint8_t bitOrder) 
 {
-
-	if(_spi_no > 1) return;
-
-	uint8 extra_bits = no_bits%8;
-
-	while(READ_PERI_REG(SPI_CMD(_spi_no))&SPI_USR);	
-	//enable MOSI
-	SET_PERI_REG_MASK(SPI_USER(_spi_no), SPI_USR_MOSI);
-	//disable MISO, ADDR, COMMAND, DUMMY
-	CLEAR_PERI_REG_MASK(SPI_USER(_spi_no), SPI_USR_MISO|SPI_USR_COMMAND|SPI_USR_ADDR|SPI_USR_DUMMY);
-	//setup MOSI bit length
-	WRITE_PERI_REG(SPI_USER1(_spi_no), ((no_bits-1)&SPI_USR_MOSI_BITLEN)<<SPI_USR_MOSI_BITLEN_S); //set bits in MOSI BITLEN. Clears all ADDR/MISO/DUMMY BITLENs!
-	//copy data to W0
-	if(READ_PERI_REG(SPI_USER(_spi_no))&SPI_WR_BYTE_ORDER) {
-		WRITE_PERI_REG(SPI_W0(_spi_no), data<<(32-no_bits));
-	} else if(extra_bits){
-		//if your data isn't a byte multiple (8/16/24/32 bits)and you don't have SPI_WR_BYTE_ORDER set, you need this to move the non-8bit remainder to the MSBs
-		//not sure if there's even a use case for this, but it's here if you need it...
-		//for example, 0xDA4 12 bits without SPI_WR_BYTE_ORDER would usually be output as if it were 0x0DA4, 
-		//of which 0xA4, and then 0x0 would be shifted out (first 8 bits of low byte, then 4 MSB bits of high byte - ie reverse byte order). 
-		//The code below shifts it out as 0xA4 followed by 0xD as you might require. 
-		WRITE_PERI_REG(SPI_W0(_spi_no), ((0xFFFFFFFF<<(no_bits - extra_bits)&data)<<(8-extra_bits) | (0xFFFFFFFF>>(32-(no_bits - extra_bits)))&data));
-	} else {
-		WRITE_PERI_REG(SPI_W0(_spi_no), data);
-	}
-	//send
-	SET_PERI_REG_MASK(SPI_CMD(_spi_no), SPI_USR);
+  if (!_impl)
+    return;
+  _impl->setBitOrder(bitOrder);
 }
 
-//TODO spi_rxd function
-
-/*///////////////////////////////////////////////////////////////////////////////
-//
-// Function Name: func
-//   Description: 
-//    Parameters: 
-//				 
-////////////////////////////////////////////////////////////////////////////////
-
-void func(params){
-
+void SPIClass::setDataMode(uint8_t dataMode) 
+{
+  if (!_impl)
+    return;
+  _impl->setDataMode(dataMode);
 }
 
-///////////////////////////////////////////////////////////////////////////////*/
-
+void SPIClass::setClockDivider(uint8_t clockDiv) 
+{
+  if (!_impl)
+    return;
+  _impl->setClockDivider(clockDiv);
+}
 

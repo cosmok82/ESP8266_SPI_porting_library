@@ -1,119 +1,63 @@
 /*
-* The MIT License (MIT)
-* 
-* Copyright (c) 2015 David Ogilvy (MetalPhreak)
-* Porting by Cosimo Orlando (http://creativityslashdesign.tk)
-* 
-* Permission is hereby granted, free of charge, to any person obtaining a copy
-* of this software and associated documentation files (the "Software"), to deal
-* in the Software without restriction, including without limitation the rights
-* to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-* copies of the Software, and to permit persons to whom the Software is
-* furnished to do so, subject to the following conditions:
-* 
-* The above copyright notice and this permission notice shall be included in all
-* copies or substantial portions of the Software.
-* 
-* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-* OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-* SOFTWARE.
-*/
+ * Copyright (c) 2010 by Cristian Maglie <c.maglie@bug.st>
+ * Copyright (c) 2014 by Paul Stoffregen <paul@pjrc.com> (Transaction API)
+ * Copyright (c) 2014 by Matthijs Kooijman <matthijs@stdin.nl> (SPISettings AVR)
+ * SPI Master library for arduino.
+ *
+ * This file is free software; you can redistribute it and/or modify
+ * it under the terms of either the GNU General Public License version 2
+ * or the GNU Lesser General Public License version 2.1, both as
+ * published by the Free Software Foundation.
+ */
 
 #ifndef _SPI_H_INCLUDED
 #define _SPI_H_INCLUDED
 
 #include <Arduino.h>
-#include "ets_sys.h"
-#include "osapi.h"
-#include "os_type.h"
-#include "eagle_soc.h"
+#include "include/SPIdef.h"
 
 
-//Define SPI hardware modules
-#define SSPI 0
-#define HSPI 1
 
-#define SPI_CLK_USE_DIV 0
-#define SPI_CLK_80MHZ_NODIV 1
+struct SPISettings 
+{
+  SPISettings(uint32_t clock, uint8_t bitOrder, uint8_t dataMode) 
+  : _clock(clock)
+  , _bitOrder(bitOrder)
+  , _dataMode(dataMode)
+  {
+  }
 
-#ifndef LSBFIRST
-#define LSBFIRST 0
-#endif
-#ifndef MSBFIRST
-#define MSBFIRST 1
-#endif
-
-#ifndef CPU_CLK_FREQ //Should already be defined in eagle_soc.h
-#define CPU_CLK_FREQ 80*1000000
-#endif
-
-//Define some default SPI clock settings
-#define SPI_CLK_PREDIV 2
-#define SPI_CLK_CNTDIV 2
-
-#define SPI_CLK_FREQ CPU_CLK_FREQ/(SPI_CLK_PREDIV*SPI_CLK_CNTDIV) // 80 / 4 = 20 MHz
-
-
-class SPIesp {
-public:
-  
-  // Initialize the SPI library
-  SPIesp(uint8 spi_no = HSPI);
-  // Disable the SPI bus
-  ~SPIesp();
-  
-  void spi_txd(uint8 no_bits, uint32 data);
-
-  ////////////////////////////////////////////////////////////////////////////////
-
-  ////////////////////////////////////////////////////////////////////////////////
-  //
-  // Function Name: spi_tx8
-  //   Description: SPI transmit 8bits of data
-  //    Parameters: data - actual data to transmit
-  //				 
-  ////////////////////////////////////////////////////////////////////////////////
-
-  inline void spi_tx8(uint32 data) { spi_txd(8, (uint32) data); }
-
-  ////////////////////////////////////////////////////////////////////////////////
-
-  ////////////////////////////////////////////////////////////////////////////////
-  //
-  // Function Name: spi_tx16
-  //   Description: SPI transmit 16bits of data
-  //    Parameters: spi_no - SSPI (0) or HSPI (1)
-  //				  data - actual data to transmit
-  //				 
-  ////////////////////////////////////////////////////////////////////////////////
-
-  inline void spi_tx16(uint32 data) { spi_txd(16, (uint32) data); }
-
-  ////////////////////////////////////////////////////////////////////////////////
-
-  ////////////////////////////////////////////////////////////////////////////////
-  //
-  // Function Name: spi_tx32
-  //   Description: SPI transmit 32bits of data
-  //    Parameters: data - actual data to transmit
-  //				 
-  ////////////////////////////////////////////////////////////////////////////////
-
-  inline void spi_tx32(uint32 data) { spi_txd(32, data); }
-
-  
-private:
-
-  uint8 _spi_no;
-  void spi_init_gpio(uint8 sysclk_as_spiclk);
-  void spi_clock(uint16 prediv, uint8 cntdiv);
-  void spi_tx_byte_order(uint8 byte_order);
+  uint32_t _clock;
+  uint8_t  _bitOrder;
+  uint8_t  _dataMode;
 };
 
-//extern SPIesp SPI;
+class SPIImpl;
 
-#endif // _SPI_H_INCLUDED
+class SPIClass 
+{
+public:
+  SPIClass();
+  
+  void begin();
+
+  // void usingInterrupt(uint8_t interruptNumber);
+  // void beginTransaction(SPISettings settings);
+  uint8_t transfer(uint8_t data);
+  // uint16_t transfer16(uint16_t data);
+  void transfer(void *buf, size_t count);
+  // void endTransaction(void);
+
+  void end();
+
+  void setBitOrder(uint8_t bitOrder);  
+  void setDataMode(uint8_t dataMode);
+  void setClockDivider(uint8_t clockDiv);
+
+private:
+  SPIImpl* _impl;
+};
+
+extern SPIClass SPI;
+
+#endif

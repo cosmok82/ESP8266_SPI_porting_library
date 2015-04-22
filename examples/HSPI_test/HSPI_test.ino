@@ -2,7 +2,7 @@
 
 void setup() {
 
-  SPIesp SPI(HSPI); // selected HSPI
+  SPI.begin(HSPI); // selected HSPI
   uint8_t data = 0x04;
   SPI.spi_tx8(data);
 }
