@@ -17,3 +17,10 @@ Topic on <a href="http://goo.gl/3RzfRp">esp8266.com</a> .
     -   Renamed the main class
     Fix:
     -   Solved the problem with compiling (never tested on HW)
+
+    0.0.2 (2015-04-22)
+    ------------------
+    Changes:
+    -   Some compatibility improvements
+    Fix:
+    -   Small bug fixing (never tested on HW)
