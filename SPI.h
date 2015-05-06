@@ -54,9 +54,9 @@ extern "C" {   //used "external C" to solve all compiling problems
 
 //Define some default SPI clock settings
 #define SPI_CLK_PREDIV 2
-#define SPI_CLK_CNTDIV 2
+#define SPI_CLK_CNTDIV 10
 
-#define SPI_CLK_FREQ CPU_CLK_FREQ/(SPI_CLK_PREDIV*SPI_CLK_CNTDIV) // 80 / 4 = 20 MHz
+#define SPI_CLK_FREQ CPU_CLK_FREQ/(SPI_CLK_PREDIV*SPI_CLK_CNTDIV) // 80 / 20 = 4 MHz
 
 
 class SPIesp {

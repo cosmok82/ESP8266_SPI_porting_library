@@ -48,12 +48,33 @@ void SPIesp::begin(uint8 spi_no)
 	if(_spi_no > 1) return; //Only SPI and HSPI are valid spi modules. 
 
 	spi_init_gpio(SPI_CLK_USE_DIV);
+	
+	SET_PERI_REG_MASK(SPI_USER(_spi_no), SPI_CS_SETUP|SPI_CS_HOLD|SPI_USR_COMMAND);
+	CLEAR_PERI_REG_MASK(SPI_USER(_spi_no), SPI_FLASH_MODE);
+	
 	spi_clock(SPI_CLK_PREDIV, SPI_CLK_CNTDIV);
 	spi_tx_byte_order(MSBFIRST);
-
+	
+	// original
 	SET_PERI_REG_MASK(SPI_USER(_spi_no), SPI_CS_SETUP|SPI_CS_HOLD);
 	CLEAR_PERI_REG_MASK(SPI_USER(_spi_no), SPI_FLASH_MODE);
+	/*
+	SET_PERI_REG_MASK(SPI_USER(spi_no), SPI_CS_SETUP|SPI_CS_HOLD|SPI_USR_COMMAND|SPI_USR_MOSI);
+	CLEAR_PERI_REG_MASK(SPI_USER(spi_no), SPI_FLASH_MODE);
 
+	//clear Daul or Quad lines transmission mode
+	CLEAR_PERI_REG_MASK(SPI_CTRL(spi_no), SPI_QIO_MODE|SPI_DIO_MODE|SPI_DOUT_MODE|SPI_QOUT_MODE);
+	
+	WRITE_PERI_REG(SPI_CLOCK(spi_no), 
+					((3&SPI_CLKCNT_N)<<SPI_CLKCNT_N_S)|
+					((1&SPI_CLKCNT_H)<<SPI_CLKCNT_H_S)|
+					((3&SPI_CLKCNT_L)<<SPI_CLKCNT_L_S)); //clear bit 31,set SPI clock div
+
+	//set 8bit output buffer length, the buffer is the low 8bit of register"SPI_FLASH_C0"
+	WRITE_PERI_REG(SPI_USER1(spi_no), 
+					((7&SPI_USR_MOSI_BITLEN)<<SPI_USR_MOSI_BITLEN_S)|
+					((7&SPI_USR_MISO_BITLEN)<<SPI_USR_MISO_BITLEN_S));
+	*/
 }
 
 void SPIesp::end()
@@ -91,11 +112,11 @@ void SPIesp::spi_init_gpio(uint8 sysclk_as_spiclk)
 		PIN_FUNC_SELECT(PERIPHS_IO_MUX_SD_DATA0_U, 1);	
 		PIN_FUNC_SELECT(PERIPHS_IO_MUX_SD_DATA1_U, 1);	
 	}else if(_spi_no==HSPI){
-		WRITE_PERI_REG(PERIPHS_IO_MUX, 0x105|(clock_div_flag<<9)); //Set bit 9 if 80MHz sysclock required
-		PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTDI_U, 2); //GPIO12 is HSPI MISO pin (Master Data In)
-		PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTCK_U, 2); //GPIO13 is HSPI MOSI pin (Master Data Out)
-		PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTMS_U, 2); //GPIO14 is HSPI CLK pin (Clock)
-		PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTDO_U, 2); //GPIO15 is HSPI CS pin (Chip Select / Slave Select)
+		WRITE_PERI_REG(PERIPHS_IO_MUX, 0x105|(clock_div_flag << 9)); //Set bit 9 if 80MHz sysclock required
+		PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTDI_U, 2); //PIN10 = GPIO12: is HSPI MISO pin (Master Data In)
+		PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTCK_U, 2); //PIN12 = GPIO13: is HSPI MOSI pin (Master Data Out)
+		PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTMS_U, 2); //PIN09 = GPIO14: is HSPI CLK pin (Clock)
+		PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTDO_U, 2); //PIN13 = GPIO15: is HSPI CS pin (Chip Select / Slave Select)
 	}
 
 }
@@ -220,5 +241,4 @@ void func(params){
 }
 
 ///////////////////////////////////////////////////////////////////////////////*/
-
 
