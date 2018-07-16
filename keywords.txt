@@ -6,23 +6,23 @@
 # Datatypes (KEYWORD1)
 #######################################
 
-SPIesp  	KEYWORD1
-SPI     	KEYWORD1
+SPIesp	KEYWORD1
+SPI	KEYWORD1
 
 #######################################
 # Methods and Functions (KEYWORD2)
 #######################################
-begin	 KEYWORD2
-end		 KEYWORD2
-spi_txd	 KEYWORD2
-spi_txd	 KEYWORD2
-transfer KEYWORD2
-spi_tx8	 KEYWORD2
-spi_tx16 KEYWORD2
-spi_tx32 KEYWORD2
+begin	KEYWORD2
+end	KEYWORD2
+spi_txd	KEYWORD2
+spi_txd	KEYWORD2
+transfer	KEYWORD2
+spi_tx8	KEYWORD2
+spi_tx16	KEYWORD2
+spi_tx32	KEYWORD2
 
 #######################################
 # Constants (LITERAL1)
 #######################################
-SSPI LITERAL1
-HSPI LITERAL1
+SSPI	LITERAL1
+HSPI	LITERAL1
